@@ -1,7 +1,10 @@
 from tensorflow import keras
-
+import sys
 
 class ModelBuilder:
+    """
+        This builds the detection model. Its a pretty standard unet
+    """
     def build( self ):
         inp_l = keras.layers.Input((240, 320, 3))
         l_i = inp_l
@@ -31,7 +34,11 @@ class ModelBuilder:
         return keras.models.Model(inputs=[inp_l], outputs = [op])
         
 if __name__=="__main__":
+    if len(sys.argv) < 2:
+        print "usage: mode.py model_name"
+        sys.exit(0)
+        
     builder = ModelBuilder()
     model = builder.build()
     model.summary()
-    model.save("text_box_unet")
+    model.save(sys.argv[1])

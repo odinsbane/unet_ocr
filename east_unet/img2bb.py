@@ -74,23 +74,46 @@ selected_indices = tensorflow.image.non_max_suppression(bbs, weights, x*y)
 selected_boxes = tensorflow.gather(bbs, selected_indices)
 
 
+from matplotlib import pyplot
+
 
 for box in selected_boxes:
     print(box)
     if all(b == 0 for b in box):
         break
-
+height = image.shape[0]
+width = image.shape[1]
+scales = numpy.array( [height, width, height, width] )
 if len(sys.argv) > 3:
     model = keras.models.load_model(sys.argv[3])
     op = model.predict(numpy.array([image]))
-    #b2 = relativeToAbsolute(op["boxes"][0])
-    b2 = op["boxes"][0]
+    b2 = relativeToAbsolute(op["boxes"][0])
+    #b2 = op["boxes"][0]
     s2 = op["score"][0]
     bbs = tensorflow.reshape(b2, (x*y, 4))
     weights = tensorflow.reshape(s2, (x*y, ))
     selected_indices = tensorflow.image.non_max_suppression(bbs, weights, x*y)
     selected_boxes = tensorflow.gather(bbs, selected_indices)
-    for box in selected_boxes[0:10]:
-        print(box)
-        if all(b == 0 for b in box):
+    selected_scores = tensorflow.gather(weights, selected_indices)
+    good = []
+    for box, score in zip( selected_boxes, selected_scores):
+        print(box, score)
+        if( score > 0.5 ):
+            box2 = box/scales
+            good.append(box2)
+        else:
             break
+    boxes = numpy.array([good])
+    colors = numpy.array( [[0.0, 0.0, 1.0]]*len(good) )
+    print(image.shape)
+    rmx = 255 #numpy.max(image[:,:,0])
+    gmx = 255 #numpy.max(image[:,:,1])
+    bmx = 255 #numpy.max(image[:,:,2])
+    fimg = numpy.array([image], dtype="float32")
+    fimg[0,:,:,0] = fimg[0,:,:,0]/rmx
+    fimg[0,:,:,1] = fimg[0,:,:,1]/gmx
+    fimg[0,:,:,2] = fimg[0,:,:,2]/bmx
+
+    drawn = tensorflow.image.draw_bounding_boxes(fimg, boxes, colors)
+    pyplot.imshow(drawn[0])
+    pyplot.show()

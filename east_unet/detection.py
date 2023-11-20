@@ -1,14 +1,14 @@
 """
- Given a bounding box and an image, how can we say what the text it.
+ Given a bounding box and an image, how can we say what the text is.
 """
 from tensorflow import keras
 import numpy
 
 CIPHER=b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!?.\" "
 NULL=len(CIPHER) - 1
-import data
+import east_unet.data as data
 import sys
-import math
+import math, random, pathlib
 
 class Caligrapher:
     def __init__(self):
@@ -82,42 +82,73 @@ def createModel( model_name ):
     model.save(model_name)
 
 def trainModel(data_folder, model_file, save_file=None):
-        
+        if not isinstance(model_file, pathlib.Path):
+            model_file = pathlib.Path(model_file)
+            print("converting")
         if save_file is None:
-            if ".h5" in model_file:
-                save_file = model_file.replace(".h5", "-trained.h5")
+            if ".h5" in model_file.name:
+                save_file = pathlib.Path(model_file.parent, model_file.name.replace(".h5", "-trained.h5"))
             else:
-                save_file = model_file + "-trained"
+                save_file = pathlib.Path(model_file.parent, model_file.name + "-trained")
         
         cr = Caligrapher()
         model = cr.loadModel(model_file)
-        images_names, labels_names = data.get_file_names(data_folder)
+        images_names, labels_names = data.getFileNames(data_folder)
         
-        CHUNK=5000
-        for j in range(100):
-            for i in range(0, len(images_names), CHUNK):
-                img_chunk = images_names[i:i+CHUNK]
-                lbl_chunk = labels_names[i:i+CHUNK]
-                boxes, letters = data.get_text_data(data_folder, img_chunk, lbl_chunk )
-                tiles = numpy.array([ cr.shape(region) for region in boxes])
-                lets = numpy.array([ cr.encodeString(text) for text in letters])
-                
-                model.fit(x = tiles, y = lets, batch_size=128, epochs = 20)
+        every = [(i, l) for i,l in zip(images_names, labels_names)]
+        n_validate = 100
 
-            y = model(tiles[:2])
-            loser = model.loss(lets[:2], y).numpy()
-            
-            print( "loss of: ", loser)
-            if math.isnan(loser):
-                break
-            print("grand epoch #", j)
-            model.save(save_file)
+        train = every[0:-n_validate]
+        random.shuffle(train)
+
+        valid = every[len(train):]
+
+        images_names = [ il[0] for il in train ]
+        labels_names = [ il[1] for il in train ]
+
+        CHUNK=5000
+
+        val_names = [il[0] for il in valid]
+        val_labels = [il[1] for il in valid]
+
+        vboxes, vletters = data.getTextData(data_folder, val_names, val_labels)
+        v_tiles = numpy.array([ cr.shape(region) for region in vboxes])
+        v_letters = numpy.array([ cr.encodeString(text) for text in vletters])
+
+        boxes, letters = data.getTextData(data_folder, images_names, labels_names )
+
+        with open("caligrapher-%s-loss.txt"%model_file.name, 'w') as logger:
+            logger.write("#epoch\tchunk\tloss\n")
+            v_pred = model(v_tiles)
+            loser = model.loss(v_letters, v_pred).numpy()
+            best = loser
+            print( "starting loss of: ", loser)
+            logger.write("%s\t%s\t%s\n"%(-1, -1, loser))
+            logger.flush()
+
+            for j in range(100):
+                for i in range(0, len(boxes), CHUNK):
+                    tiles = numpy.array([ cr.shape(region) for region in boxes[i:i+CHUNK]])
+                    lets = numpy.array([ cr.encodeString(text) for text in letters[i:i+CHUNK]])
+                    model.fit(x = tiles, y = lets, batch_size=128, epochs = 20)
+                    v_pred = model(v_tiles)
+                    loser = model.loss(v_letters, v_pred).numpy()
+                    print( "loss of: ", loser)
+                    logger.write("%s\t%s\t%s\n"%(j, i, loser))
+                    logger.flush()
+                    if math.isnan(loser):
+                        break
+                if loser < best:
+                    best = loser
+                    model.save( pathlib.Path( model_file.parent, "%s-best"%(model_file.name) ) )
+                print("grand epoch #", j)
+                model.save(save_file)
 
 def predictExamples():
     cr = Caligrapher()
     m = cr.loadModel("models/text-getter-trained")
-    boxes, letters = data.get_text_data(
-        "data/fake-simple", 
+    boxes, letters = data.getTextData(
+        "fake-simple",
         ["img_1.jpg", "img_2.jpg"], 
         ["gt_img_1.txt", "gt_img_2.txt"]
     )
@@ -136,6 +167,6 @@ if __name__=="__main__":
     if sys.argv[1] == "c":
         createModel("models/text-getter")
     elif sys.argv[1] == "t":
-        trainModel("data/fake-simple", "models/text-getter")
+        trainModel("fake-simple", "models/text-getter")
     elif  sys.argv[1] == "p":
         predictExamples()

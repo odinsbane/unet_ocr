@@ -29,8 +29,8 @@ class ModelBuilder:
             l_i = keras.layers.Conv2D(filters, (3, 3), padding="same")(l_i)
             filters /= 2
             l_i = keras.layers.Conv2D( filters, (3, 3), padding="same")(l_i)
-        op1 = keras.layers.Conv2D( 4, (1, 1), padding="same")(l_i)
-        op2 = keras.layers.Conv2D( 1, (1, 1), padding="same")(l_i)
+        op1 = keras.layers.Conv2D( 4, (1, 1), padding="same", activation="relu")(l_i)
+        op2 = keras.layers.Conv2D( 1, (1, 1), padding="same", activation="sigmoid")(l_i)
         return keras.models.Model(inputs=[inp_l], outputs = {"boxes":op1, "score":op2})
         
 if __name__=="__main__":

@@ -16,26 +16,29 @@ if __name__=="__main__":
         #pyplot.show()
         
     y = model(numpy.array(tiles))
+    print("predicted!")
+
     for i in range(len(tiles)):
-        figure = pyplot.figure(i+1)
-        zz = y["boxes"][0]
+        zz = y["boxes"][i]
+        sc = y["score"][i]
+        print(zz.shape, sc.shape)
         c = 1
-        figure.add_subplot(2, 3, c);
+        figure = pyplot.figure(1)
+        figure.add_subplot(3, 2, c);
+        pyplot.imshow(img)
+        c += 1
+        figure.add_subplot(3, 2, c);
+        pyplot.imshow(sc)
+        c += 1
+        figure.add_subplot(3, 2, c);
         pyplot.imshow(zz[:, :, 0])
         c += 1
-        figure.add_subplot(2, 3, c);
+        figure.add_subplot(3, 2, c);
         pyplot.imshow(zz[:, :, 1])
         c += 1
-        figure.add_subplot(2, 3, c);
+        figure.add_subplot(3, 2, c);
         pyplot.imshow(zz[:, :, 2])
         c += 1
-        figure.add_subplot(2, 3, c);
+        figure.add_subplot(3, 2, c);
         pyplot.imshow(zz[:, :, 3])
-        c += 1
-        figure.add_subplot(2, 3, c);
-        pyplot.imshow(tiles[i][:, :])
-        c += 1
-        figure.add_subplot(2, 3, c);
-        pyplot.imshow(y["score"][0])
-
         pyplot.show()

@@ -47,7 +47,7 @@ if __name__ == "__main__":
         for loops in range(epochs):
             for i in range(0, len(images_names), chunk):
                 images, labels = data.getTrainingData(data_folder, images_names[i:i+chunk], labels_names[i:i + chunk])
-                model.fit(x = images, y = labels, batch_size=2, epochs = 20)
+                model.fit(x = images, y = labels, batch_size=2, epochs = 2)
                 y = model.predict(val_images, batch_size=2)
                 bl = model.loss(val_labels["boxes"], y["boxes"]).numpy()
                 sl = model.loss(val_labels["score"], y["score"][:,:,:,0]).numpy()
@@ -55,6 +55,6 @@ if __name__ == "__main__":
                 log.flush()
                 if math.isnan(bl) or math.isnan(sl):
                     break
-                model.save("%s-e-%s"%(model_file.name, loops))
+                model.save( pathlib.Path(model_file.parent, "%s-e-%s-%s"%(model_file.name, loops, i)) )
         
     

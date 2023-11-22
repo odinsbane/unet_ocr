@@ -63,7 +63,14 @@ class Caligrapher:
         dest = numpy.zeros(shape, dtype=img.dtype)
         height = min( ( img.shape[0], shape[0] ) )
         width = min( ( img.shape[1], shape[1] ) )
-        dest[0:height, 0:width, :] = img[0:height, 0:width, :]
+
+        cy = 0
+        if height < shape[0]:
+            cy = (shape[0] - height)//2
+        cx = 0
+        if width < shape[1]:
+            cx = (shape[1] - width)//2
+        dest[cy: cy + height, cx: cx + width, :] = img[0:height, 0:width, :]
         
         return dest
     def loadModel(self, model_name):

@@ -94,15 +94,17 @@ def trainModel(data_folder, model_file, save_file=None):
         cr = Caligrapher()
         model = cr.loadModel(model_file)
         images_names, labels_names = data.getFileNames(data_folder)
-        
-        every = [(i, l) for i,l in zip(images_names, labels_names)]
+
+        every = [
+                    ( pathlib.Path(data_folder, i), pathlib.Path(data_folder, l) )
+                    for i,l in zip(images_names, labels_names)
+                    ]
         n_validate = 100
 
         train = every[0:-n_validate]
         random.shuffle(train)
 
         valid = every[len(train):]
-
         images_names = [ il[0] for il in train ]
         labels_names = [ il[1] for il in train ]
 
@@ -111,11 +113,11 @@ def trainModel(data_folder, model_file, save_file=None):
         val_names = [il[0] for il in valid]
         val_labels = [il[1] for il in valid]
 
-        vboxes, vletters = data.getTextData(data_folder, val_names, val_labels)
+        vboxes, vletters = data.getTextData(val_names, val_labels)
         v_tiles = numpy.array([ cr.shape(region) for region in vboxes])
         v_letters = numpy.array([ cr.encodeString(text) for text in vletters])
 
-        boxes, letters = data.getTextData(data_folder, images_names, labels_names )
+        boxes, letters = data.getTextData(images_names, labels_names )
 
         with open("caligrapher-%s-loss.txt"%model_file.name, 'w') as logger:
             logger.write("#epoch\tchunk\tloss\n")
@@ -144,14 +146,19 @@ def trainModel(data_folder, model_file, save_file=None):
                 print("grand epoch #", j)
                 model.save(save_file)
 
-def predictExamples():
+def getGTFile(img_file):
+    p = pathlib.Path(img_file)
+    i = p.name.rfind(".")
+    return pathlib.Path(p.parent, "gt_%s.txt"%(p.name[:i]))
+
+def predictExamples(model, files):
     cr = Caligrapher()
-    m = cr.loadModel("models/text-getter-trained")
-    boxes, letters = data.getTextData(
-        "fake-simple",
-        ["img_1.jpg", "img_2.jpg"], 
-        ["gt_img_1.txt", "gt_img_2.txt"]
-    )
+    m = cr.loadModel(model)
+
+    files = [pathlib.Path(f) for f in files]
+    labels = [ getGTFile(f) for f in files]
+
+    boxes, letters = data.getTextData(files, labels)
     tiles = numpy.array([ cr.shape(region) for region in boxes])
     lets = numpy.array([ cr.encodeString(text) for text in letters])
     
@@ -164,9 +171,11 @@ def predictExamples():
 
 
 if __name__=="__main__":
+    print("usage: ")
+    print("detection [ctp] model image_folder")
     if sys.argv[1] == "c":
-        createModel("models/text-getter")
+        createModel(sys.argv[2])
     elif sys.argv[1] == "t":
-        trainModel("fake-simple", "models/text-getter")
+        trainModel(sys.argv[3], sys.argv[2])
     elif  sys.argv[1] == "p":
-        predictExamples()
+        predictExamples(sys.argv[2], sys.argv[3:])

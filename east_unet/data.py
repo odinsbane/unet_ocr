@@ -2,7 +2,8 @@ import os
 import imageio
 import pathlib
 import numpy
-import math
+import math, random
+import re
 
 from matplotlib import pyplot
 
@@ -54,8 +55,18 @@ class BoundingBox:
 
         """
         return [line.distance(pt) for line in self.lines]
-    def crop(self, image):
-        return image[self.miny:self.maxy, self.minx:self.maxx, :]
+    def crop(self, image, faulty=False):
+        if faulty:
+            miny = self.miny + 1 - int(3 * random.random())
+            maxy = self.maxy + 1 - int(3 * random.random())
+            minx = self.minx + 1 - int(3 * random.random())
+            maxx = self.maxx + 1 - int(3 * random.random())
+        else:
+            miny = self.miny
+            maxy = self.maxy
+            minx = self.minx
+            maxx = self.maxx
+        return image[miny:maxy, minx:maxx, :]
     def __str__(self):
         return "%s : (%s, %s, %s, %s)"%(self.__class__, self.miny, self.minx, self.maxy, self.maxx)
         
@@ -101,8 +112,8 @@ def getFileNames(folder):
     all_files = os.listdir(folder)
     
     labels = [f for f in all_files if f.endswith(".txt")]
-    images = [f for f in all_files if f.endswith(".jpg")]
-    
+    images = [f for f in all_files if f.endswith(".jpg") or f.endswith(".png")]
+
     labels.sort()
     images.sort()
     
@@ -147,12 +158,12 @@ def labelImage(image, boxes):
         label(zz, rect)
     return zz
 
-def getTextData(folder, image_names, label_names):
+def getTextData(image_names, label_names):
     loaded_images = []
     loaded_outputs = []
     funny = 0
     for image, labels in zip(image_names, label_names):
-        img, boxes = loadImageLabels( pathlib.Path(folder, image), pathlib.Path(folder, labels))
+        img, boxes = loadImageLabels( image, labels)
         tiles = []
         texts = []
         for rect in boxes:

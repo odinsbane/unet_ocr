@@ -60,7 +60,7 @@ class Caligrapher:
         
     def shape(self, img):
         shape = (*self.input_size, 3)
-        dest = numpy.zeros(shape)
+        dest = numpy.zeros(shape, dtype=img.dtype)
         height = min( ( img.shape[0], shape[0] ) )
         width = min( ( img.shape[1], shape[1] ) )
         dest[0:height, 0:width, :] = img[0:height, 0:width, :]
@@ -145,6 +145,19 @@ def trainModel(data_folder, model_file, save_file=None):
                     model.save( pathlib.Path( model_file.parent, "%s-best"%(model_file.name) ) )
                 print("grand epoch #", j)
                 model.save(save_file)
+def validate(data_file):
+    gt = getGTFile(data_file)
+    boxes, letters = data.getTextData([data_file], [gt])
+    cr = Caligrapher()
+    from matplotlib import pyplot
+
+    pyplot.imshow( data.readImage(data_file) )
+    pyplot.show()
+
+    for box, lets in zip(boxes, letters):
+        print(lets)
+        pyplot.imshow( cr.shape(box) )
+        pyplot.show()
 
 def getGTFile(img_file):
     p = pathlib.Path(img_file)
@@ -172,10 +185,14 @@ def predictExamples(model, files):
 
 if __name__=="__main__":
     print("usage: ")
-    print("detection [ctp] model image_folder")
+    if sys.argv[1] not in "ctpv":
+        print("detection [ctp] *args")
+        print("c: create; t: train; p: predict; v: validate")
     if sys.argv[1] == "c":
         createModel(sys.argv[2])
     elif sys.argv[1] == "t":
         trainModel(sys.argv[3], sys.argv[2])
     elif  sys.argv[1] == "p":
         predictExamples(sys.argv[2], sys.argv[3:])
+    elif sys.argv[1] == "v":
+        validate(sys.argv[2])

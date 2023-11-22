@@ -66,6 +66,13 @@ class BoundingBox:
             maxy = self.maxy
             minx = self.minx
             maxx = self.maxx
+            if miny < 0:
+                miny = 0
+            if minx < 0:
+                minx = 0
+        #print(image.shape, "::", miny, minx, maxy, maxx)
+        #print("to: ", self.text, image[miny:maxy, minx:maxx, :].shape)
+        #print("mx: ", numpy.max(image[miny:maxy, minx:maxx, :]))
         return image[miny:maxy, minx:maxx, :]
     def __str__(self):
         return "%s : (%s, %s, %s, %s)"%(self.__class__, self.miny, self.minx, self.maxy, self.maxx)

@@ -55,6 +55,6 @@ if __name__ == "__main__":
                 log.flush()
                 if math.isnan(bl) or math.isnan(sl):
                     break
-                model.save( pathlib.Path(model_file.parent, "%s-e-%s-%s"%(model_file.name, loops, i)) )
+                model.save( pathlib.Path(model_file.parent, "%s-e-%s"%(model_file.name, loops)) )
         
     

@@ -2,6 +2,7 @@
  Given a bounding box and an image, how can we say what the text is.
 """
 from tensorflow import keras
+import tensorflow
 import numpy
 
 CIPHER=b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!?.\" "
@@ -68,8 +69,8 @@ class Caligrapher:
         if height < shape[0]:
             cy = (shape[0] - height)//2
         cx = 0
-        if width < shape[1]:
-            cx = (shape[1] - width)//2
+        #if width < shape[1]:
+        #    cx = (shape[1] - width)//2
         dest[cy: cy + height, cx: cx + width, :] = img[0:height, 0:width, :]
         
         return dest
@@ -77,7 +78,7 @@ class Caligrapher:
         model = keras.models.load_model(model_name)
         model.compile(
             optimizer = keras.optimizers.Adam(learning_rate=1e-5), 
-            loss = keras.losses.CategoricalCrossentropy(),
+            loss = keras.losses.MeanSquaredError(),
          )
         return model
 
@@ -106,8 +107,8 @@ def trainModel(data_folder, model_file, save_file=None):
                     ( pathlib.Path(data_folder, i), pathlib.Path(data_folder, l) )
                     for i,l in zip(images_names, labels_names)
                     ]
-        n_validate = 100
-
+        
+        n_validate = 500
         train = every[0:-n_validate]
         random.shuffle(train)
 
@@ -115,7 +116,7 @@ def trainModel(data_folder, model_file, save_file=None):
         images_names = [ il[0] for il in train ]
         labels_names = [ il[1] for il in train ]
 
-        CHUNK=5000
+        CHUNK=50000
 
         val_names = [il[0] for il in valid]
         val_labels = [il[1] for il in valid]
@@ -130,6 +131,17 @@ def trainModel(data_folder, model_file, save_file=None):
             logger.write("#epoch\tchunk\tloss\n")
             v_pred = model(v_tiles)
             loser = model.loss(v_letters, v_pred).numpy()
+            by_letter = open("letter-loss.txt", 'w')
+            
+            dp = (v_letters - v_pred)
+            dp = dp*dp
+            err = tensorflow.reduce_sum(dp, axis=(0, 1))
+            tot = tensorflow.reduce_sum(v_letters, axis=(0, 1))
+            err = err/tot
+            for v in err.numpy():
+                by_letter.write("%s\t"%v)
+            by_letter.write("\n")
+            by_letter.flush()
             best = loser
             print( "starting loss of: ", loser)
             logger.write("%s\t%s\t%s\n"%(-1, -1, loser))
@@ -139,9 +151,19 @@ def trainModel(data_folder, model_file, save_file=None):
                 for i in range(0, len(boxes), CHUNK):
                     tiles = numpy.array([ cr.shape(region) for region in boxes[i:i+CHUNK]])
                     lets = numpy.array([ cr.encodeString(text) for text in letters[i:i+CHUNK]])
-                    model.fit(x = tiles, y = lets, batch_size=128, epochs = 20)
+                    model.fit(x = tiles, y = lets, batch_size=256, epochs =10)
                     v_pred = model(v_tiles)
                     loser = model.loss(v_letters, v_pred).numpy()
+                    dp = (v_letters - v_pred)
+                    dp = dp*dp
+                    err = tensorflow.reduce_sum(dp, axis=(0, 1))
+                    tot = tensorflow.reduce_sum(v_letters, axis=(0, 1))
+                    err = err/tot
+                    for v in err.numpy():
+                        by_letter.write("%s\t"%v)
+                    by_letter.write("\n")
+                    by_letter.flush()
+
                     print( "loss of: ", loser)
                     logger.write("%s\t%s\t%s\n"%(j, i, loser))
                     logger.flush()

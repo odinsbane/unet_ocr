@@ -29,7 +29,12 @@ class Line:
         #|b| is 1 and |a|sin[theta] is the distance to the line.
         cross_product = dx*self.dir[1] - dy * self.dir[0]
         return -cross_product
-        
+
+def axisAlignedRectangle(ymin, xmin, ymax, xmax):
+    pts = numpy.array([ [ xmin, ymin ], [xmax, ymin], [xmax, ymax], [xmin, ymax]])
+    return BoundingBox(pts)
+
+
 class BoundingBox:
     def __init__(self, pts, text=""):
         self.lines = []

@@ -12,19 +12,19 @@ import sys
 import math, random, pathlib
 
 class Caligrapher:
-    def __init__(self):
-        self.input_size = (16, 96)
-        self.max_characters = 12
+    def __init__(self, input_size=None, max_characters=None):
+        self.input_size = input_size
+        self.max_characters = max_characters
         self.n = len(CIPHER) 
-    def buildModel(self):
+    def buildModel(self, filters=8):
         inp = keras.layers.Input( (self.input_size[0], self.input_size[1], 3) )
         x = inp
-        x = keras.layers.Conv2D(8, (3, 3) )(x)
-        x = keras.layers.Conv2D(8, (3, 3) )(x)
-        x = keras.layers.Conv2D(16, (3, 3))(x)
-        x = keras.layers.Conv2D(16, (3, 3) )(x)
-        x = keras.layers.Conv2D(32, (3, 3) )(x)
-        x = keras.layers.Conv2D(32, (3, 3))(x)
+        x = keras.layers.Conv2D(filters, (3, 3) )(x)
+        x = keras.layers.Conv2D(filters, (3, 3) )(x)
+        x = keras.layers.Conv2D(filters*2, (3, 3))(x)
+        x = keras.layers.Conv2D(filters*2, (3, 3) )(x)
+        x = keras.layers.Conv2D(filters*4, (3, 3) )(x)
+        x = keras.layers.Conv2D(filters*4, (3, 3))(x)
         total = x.shape.dims[1].value * x.shape.dims[2].value * x.shape.dims[3].value
         x = keras.layers.Reshape((total,))(x)
         x = keras.layers.Dense(100)(x);
@@ -76,6 +76,8 @@ class Caligrapher:
         return dest
     def loadModel(self, model_name):
         model = keras.models.load_model(model_name)
+        self.input_size = model.input.shape[1:3]
+        self.max_characters = model.output.shape[1]
         model.compile(
             optimizer = keras.optimizers.Adam(learning_rate=1e-5), 
             loss = keras.losses.MeanSquaredError(),
@@ -83,7 +85,7 @@ class Caligrapher:
         return model
 
 def createModel( model_name ):
-    cr = Caligrapher()
+    cr = Caligrapher((16, 96))
     cr.encodeString("one")
     cr.encodeString(b"two")
     model = cr.buildModel()
@@ -107,7 +109,7 @@ def trainModel(data_folder, model_file, save_file=None):
                     ( pathlib.Path(data_folder, i), pathlib.Path(data_folder, l) )
                     for i,l in zip(images_names, labels_names)
                     ]
-        
+        every = every[:1000]
         n_validate = 500
         train = every[0:-n_validate]
         random.shuffle(train)
@@ -174,10 +176,12 @@ def trainModel(data_folder, model_file, save_file=None):
                     model.save( pathlib.Path( model_file.parent, "%s-best"%(model_file.name) ) )
                 print("grand epoch #", j)
                 model.save(save_file)
-def validate(data_file):
+def validate(data_file, model):
     gt = getGTFile(data_file)
     boxes, letters = data.getTextData([data_file], [gt])
     cr = Caligrapher()
+    cr.loadModel(model)
+
     from matplotlib import pyplot
 
     pyplot.imshow( data.readImage(data_file) )
@@ -224,4 +228,4 @@ if __name__=="__main__":
     elif  sys.argv[1] == "p":
         predictExamples(sys.argv[2], sys.argv[3:])
     elif sys.argv[1] == "v":
-        validate(sys.argv[2])
+        validate(sys.argv[3], sys.argv[2])

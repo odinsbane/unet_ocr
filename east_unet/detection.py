@@ -91,6 +91,22 @@ def createModel( model_name ):
     model = cr.buildModel()
     model.save(model_name)
 
+def getErrorByLetter(v_letters, v_pred):
+    dp = (v_letters - v_pred)
+    dp = dp*dp
+    err = tensorflow.reduce_sum(dp, axis=(0, 1))
+    tot = tensorflow.reduce_sum(v_letters, axis=(0, 1))
+    err = err/tot
+    return err
+        
+def getErrorByPosition(v_letters, v_pred):
+    dp = (v_letters - v_pred)
+    dp = dp*dp
+    err = tensorflow.reduce_sum(dp, axis=(0, 2))
+    tot = tensorflow.reduce_sum(v_letters, axis=(0, 2))
+    err = err/tot
+    return err
+
 def trainModel(data_folder, model_file, save_file=None):
         if not isinstance(model_file, pathlib.Path):
             model_file = pathlib.Path(model_file)
@@ -109,7 +125,7 @@ def trainModel(data_folder, model_file, save_file=None):
                     ( pathlib.Path(data_folder, i), pathlib.Path(data_folder, l) )
                     for i,l in zip(images_names, labels_names)
                     ]
-        every = every[:1000]
+        #every = every[:1000]
         n_validate = 500
         train = every[0:-n_validate]
         random.shuffle(train)
@@ -135,15 +151,12 @@ def trainModel(data_folder, model_file, save_file=None):
             loser = model.loss(v_letters, v_pred).numpy()
             by_letter = open("letter-loss.txt", 'w')
             
-            dp = (v_letters - v_pred)
-            dp = dp*dp
-            err = tensorflow.reduce_sum(dp, axis=(0, 1))
-            tot = tensorflow.reduce_sum(v_letters, axis=(0, 1))
-            err = err/tot
+            err = getErrorByPosition(v_letters, v_pred)
             for v in err.numpy():
                 by_letter.write("%s\t"%v)
             by_letter.write("\n")
             by_letter.flush()
+            
             best = loser
             print( "starting loss of: ", loser)
             logger.write("%s\t%s\t%s\n"%(-1, -1, loser))
@@ -156,11 +169,8 @@ def trainModel(data_folder, model_file, save_file=None):
                     model.fit(x = tiles, y = lets, batch_size=256, epochs =10)
                     v_pred = model(v_tiles)
                     loser = model.loss(v_letters, v_pred).numpy()
-                    dp = (v_letters - v_pred)
-                    dp = dp*dp
-                    err = tensorflow.reduce_sum(dp, axis=(0, 1))
-                    tot = tensorflow.reduce_sum(v_letters, axis=(0, 1))
-                    err = err/tot
+                    
+                    err = getErrorByPosition(v_letters, v_pred)
                     for v in err.numpy():
                         by_letter.write("%s\t"%v)
                     by_letter.write("\n")

@@ -106,6 +106,7 @@ def bbImagePredict(model, image):
 if __name__=="__main__":
     if sys.argv[1] not in ["l","g"]:
         print("usage: img2bb [lg] *options")
+        sys.exit(0)
     if sys.argv[1] == "l":
         imgf = pathlib.Path(sys.argv[2])
         if len(sys.argv) > 3:
@@ -134,20 +135,25 @@ if __name__=="__main__":
 
 
     good = []
+    great = []
     rectangles = []
     height = image.shape[0]
     width = image.shape[1]
     scales = numpy.array( [height, width, height, width] )
     for box, score in zip( selected_boxes, selected_scores):
         print(box, score)
-        if( score > 0.5 ):
+        if  score > 0.6:
             rectangles.append(data.axisAlignedRectangle( box[0], box[1], box[2], box[3]))
             box2 = box/scales
-            good.append(box2)
+            if score > 0.8:
+                great.append(box2)
+            else:
+                good.append(box2)
         else:
             break
     boxes = numpy.array([good])
     colors = numpy.array( [[0.0, 0.0, 1.0]]*len(good) )
+    gcolors = numpy.array([[0.7, 0.2, 0.2]]*len(great))
     print(image.shape)
     rmx = 255 #numpy.max(image[:,:,0])
     gmx = 255 #numpy.max(image[:,:,1])
@@ -157,6 +163,7 @@ if __name__=="__main__":
     fimg[0,:,:,1] = fimg[0,:,:,1]/gmx
     fimg[0,:,:,2] = fimg[0,:,:,2]/bmx
 
-    drawn = tensorflow.image.draw_bounding_boxes(fimg, boxes, colors)
+    drawn = tensorflow.image.draw_bounding_boxes(fimg, numpy.array([good]), colors)
+    drawn = tensorflow.image.draw_bounding_boxes(drawn, numpy.array([great]), gcolors)
     pyplot.imshow(drawn[0])
     pyplot.show()
